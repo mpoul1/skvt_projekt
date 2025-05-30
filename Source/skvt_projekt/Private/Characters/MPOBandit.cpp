@@ -24,10 +24,18 @@ void AMPOBandit::BeginPlay()
 	BanditStateAIController = Cast<ADetourCrowdAIController>(GetController());
 
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AMPOBandit::OnTargetPerceptionUpdated);
+	AIPerceptionComponent->OnTargetPerceptionForgotten.AddDynamic(this, &AMPOBandit::OnTargetPerceptionForgotten);
 }
 
 void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
+	if (LastSensedActor!=nullptr && Actor == LastSensedActor && !Stimulus.WasSuccessfullySensed())
+	{
+		Stimulus.SetExpirationAge(5.f); // Set a reasonable expiration age for the stimulus;
+		OnTargetPerceptionForgotten(Actor);
+		return;
+	}
+	
 	if (!Actor || Actor == this || !Stimulus.WasSuccessfullySensed())
 		return;
 
@@ -40,9 +48,25 @@ void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 		return;
 
 	LastSensedActor = Actor;
+	LastSensedActionLocation = Actor->GetActorLocation();
+	
 	bPlayerSensed = true;
 	UE_LOG(LogTemp, Warning, TEXT("Perceived Player: %s"), *Actor->GetName());
+	OnPlayerSensedChanged(bPlayerSensed);
 }
+
+void AMPOBandit::OnTargetPerceptionForgotten(AActor* Actor)
+{
+	if (LastSensedActor != Actor)
+		return;
+
+	LastSensedActionLocation = Actor->GetActorLocation();
+	LastSensedActor = nullptr;
+	bPlayerSensed = false;
+	UE_LOG(LogTemp, Warning, TEXT("Lost Player"));
+	OnPlayerSensedChanged(bPlayerSensed);
+}
+
 
 /**
  * Moves the bandit to the current PatrolTarget using the AI controller's MoveTo function.

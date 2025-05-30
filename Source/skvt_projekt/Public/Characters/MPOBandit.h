@@ -33,6 +33,9 @@ protected:
 
 	UFUNCTION()
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
+	UFUNCTION()
+	void OnTargetPerceptionForgotten(AActor* Actor);
+	
 	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Patroling")
 	void MoveToPatrolTarget();
 	int32 GetNextPatrolPointIndex() const;
@@ -77,9 +80,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
 	bool bPlayerSensed;
 	
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
+	FVector LastSensedActionLocation;
+
 public:	
 	virtual void Tick(float DeltaTime) override;
+	
+	UFUNCTION(BlueprintImplementableEvent, Category="MyEvents")
+	void OnPlayerSensedChanged(bool bNewPlayerSensed);
+
 	
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
