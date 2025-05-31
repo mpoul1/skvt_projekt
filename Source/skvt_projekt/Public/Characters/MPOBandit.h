@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "MPOPerceptionModifier.h"
 #include "GameFramework/Character.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "MPOBandit.generated.h"
@@ -21,12 +22,17 @@ enum class EPatrolPointSelection : uint8
 
 
 UCLASS()
-class SKVT_PROJEKT_API AMPOBandit : public ACharacter
+class SKVT_PROJEKT_API AMPOBandit : public ACharacter, public IMPOPerceptionModifier
 {
 	GENERATED_BODY()
 
 public:
 	AMPOBandit();
+
+	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Sensing")
+	virtual void DisablePerception_Implementation() override;
+	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Sensing")
+	virtual void EnablePerception_Implementation() override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -35,6 +41,9 @@ protected:
 	void OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus);
 	UFUNCTION()
 	void OnTargetPerceptionForgotten(AActor* Actor);
+	
+	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Sensing")
+	bool IsPlayerVisible(AActor* PlayerActor);
 	
 	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Patroling")
 	void MoveToPatrolTarget();

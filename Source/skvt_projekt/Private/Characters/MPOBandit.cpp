@@ -8,12 +8,34 @@
 #include "DetourCrowdAIController.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Perception/AIPerceptionStimuliSourceComponent.h"
 
 
 AMPOBandit::AMPOBandit()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	AIPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("AIPerceptionComponent"));
+}
+
+void AMPOBandit::DisablePerception_Implementation()
+{
+	auto perceptionStimuli = GetComponentByClass<UAIPerceptionStimuliSourceComponent>();
+	if (!perceptionStimuli)
+		return;
+	
+	perceptionStimuli->UnregisterFromPerceptionSystem();
+	UE_LOG(LogTemp, Warning, TEXT("Perception disabled for: %s"), *GetName());
+}
+
+void AMPOBandit::EnablePerception_Implementation()
+{
+	auto perceptionStimuli = GetComponentByClass<UAIPerceptionStimuliSourceComponent>();
+	if (!perceptionStimuli)
+		return;
+	
+	perceptionStimuli->RegisterWithPerceptionSystem();
+	UE_LOG(LogTemp, Warning, TEXT("Perception enabled for: %s"), *GetName());
+	
 }
 
 void AMPOBandit::BeginPlay()
@@ -26,6 +48,46 @@ void AMPOBandit::BeginPlay()
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AMPOBandit::OnTargetPerceptionUpdated);
 	AIPerceptionComponent->OnTargetPerceptionForgotten.AddDynamic(this, &AMPOBandit::OnTargetPerceptionForgotten);
 }
+
+// Function to check line of sight
+bool AMPOBandit::IsPlayerVisible(AActor* PlayerActor)
+{
+    if (!PlayerActor) return false;
+
+    FVector EnemyLocation = GetActorLocation();
+    FVector PlayerLocation = PlayerActor->GetActorLocation();
+
+    // Optional: adjust the start/end points if needed, e.g., eye height
+    FHitResult HitResult;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this); // ignore self
+
+    bool bHit = GetWorld()->LineTraceSingleByChannel(
+        HitResult,
+        EnemyLocation,
+        PlayerLocation,
+        ECC_Visibility,
+        Params
+    );
+
+    // Debug line for visualization
+    DrawDebugLine(GetWorld(), EnemyLocation, PlayerLocation, FColor::Green, false, 1.0f);
+
+    if (bHit)
+    {
+        // Check if the hit actor is the player
+        if (HitResult.GetActor() == PlayerActor)
+        {
+            // Player is visible
+            return true;
+        }
+        // Hit something else (e.g., grass, obstacle), so not visible
+        return false;
+    }
+    // No hit means direct line of sight
+    return true;
+}
+
 
 void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
@@ -46,6 +108,13 @@ void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	auto Pawn = Cast<APawn>(Actor);
 	if (!Pawn || !Pawn->IsPlayerControlled())
 		return;
+		
+		
+	if (!IsPlayerVisible(Actor))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Player not visible: %s, propably hidden by some class"), *Actor->GetName());
+		return;
+	}
 
 	LastSensedActor = Actor;
 	LastSensedActionLocation = Actor->GetActorLocation();
