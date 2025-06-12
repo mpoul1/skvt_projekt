@@ -10,6 +10,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISense_Sight.h"
 
 
 AMPOBandit::AMPOBandit()
@@ -26,11 +27,27 @@ void AMPOBandit::BeginPlay()
 	BanditStateAIController = Cast<ADetourCrowdAIController>(GetController());
 	BanditAIMovementComponent = GetComponentByClass<UCharacterMovementComponent>();
 
+	for (UAISenseConfig* Config : SenseConfigs)
+		if (Config)
+			AIPerceptionComponent->ConfigureSense(*Config);
+	
+	if (DominantSense)
+		AIPerceptionComponent->SetDominantSense(DominantSense);
+	
 	AIPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AMPOBandit::OnTargetPerceptionUpdated);
 	AIPerceptionComponent->OnTargetPerceptionForgotten.AddDynamic(this, &AMPOBandit::OnTargetPerceptionForgotten);
+
+	LastSensedActorLocation = FVector::ZeroVector;
 }
 
-// Function to check line of sight
+/**
+ * Checks if the player actor is visible to the bandit.
+ * This function uses the MPOCharacterPerceptionModifier component to determine if the perception is active.
+ * If the component is not found, it defaults to returning true (visible).
+ * 
+ * @param PlayerActor The actor to check visibility for.
+ * @return True if the player is visible, false otherwise.
+ */
 bool AMPOBandit::IsPlayerVisible(AActor* PlayerActor)
 {
     if (!PlayerActor) return false;
@@ -58,6 +75,7 @@ void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 	// Check if the sensed actor is a player character
 	if (!Actor->IsA(APawn::StaticClass()))
 		return;;
+	
 	auto Pawn = Cast<APawn>(Actor);
 	if (!Pawn || !Pawn->IsPlayerControlled())
 		return;
@@ -65,12 +83,13 @@ void AMPOBandit::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stimulus)
 		
 	if (!IsPlayerVisible(Actor))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Player not visible: %s, propably hidden by some Glass"), *Actor->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Player not visible: %s, propably hidden by some Grass"), *Actor->GetName());
+		OnTargetPerceptionForgotten(Actor);
 		return;
 	}
 
 	LastSensedActor = Actor;
-	LastSensedActionLocation = Actor->GetActorLocation();
+	LastSensedActorLocation = Actor->GetActorLocation();
 	
 	bPlayerSensed = true;
 	UE_LOG(LogTemp, Warning, TEXT("Perceived Player: %s"), *Actor->GetName());
@@ -82,7 +101,7 @@ void AMPOBandit::OnTargetPerceptionForgotten(AActor* Actor)
 	if (LastSensedActor != Actor)
 		return;
 
-	LastSensedActionLocation = Actor->GetActorLocation();
+	//LastSensedActorLocation = Actor->GetActorLocation();
 	LastSensedActor = nullptr;
 	bPlayerSensed = false;
 	UE_LOG(LogTemp, Warning, TEXT("Lost Player"));
@@ -203,6 +222,8 @@ void AMPOBandit::DrawPathPoints(FNavPathSharedPtr navPath)
 void AMPOBandit::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (LastSensedActor != nullptr)
+		LastSensedActorLocation = LastSensedActor->GetActorLocation();
 
 }
 

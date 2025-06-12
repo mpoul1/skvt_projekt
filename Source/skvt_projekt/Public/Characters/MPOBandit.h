@@ -7,6 +7,7 @@
 #include "Perception/AIPerceptionTypes.h"
 #include "MPOBandit.generated.h"
 
+class UAISenseConfig;
 class ADetourCrowdAIController;
 class UAIPerceptionComponent;
 class AAIController;
@@ -62,7 +63,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MPO Bandit|AI Patroling", meta = (AllowPrivateAccess = "true"))
 	UCharacterMovementComponent* BanditAIMovementComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Patroling", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MPO Bandit|AI Patroling", meta = (AllowPrivateAccess = "true"))
 	ADetourCrowdAIController* BanditStateAIController;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Patroling", meta = (AllowPrivateAccess = "true"))
@@ -77,17 +78,31 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Patroling", meta = (AllowPrivateAccess = "true"))
 	EPatrolPointSelection PatrolPointSelection;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
-	UAIPerceptionComponent* AIPerceptionComponent;
+	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
+	TArray<UAISenseConfig*> SenseConfigs;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UAISense> DominantSense;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
+	UAIPerceptionComponent* AIPerceptionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
 	AActor* LastSensedActor;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
 	bool bPlayerSensed;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
-	FVector LastSensedActionLocation;
+	FVector LastSensedActorLocation;
+
+	UFUNCTION(BlueprintCallable, Category = "MPO Bandit|AI Sensing", meta = (AllowPrivateAccess = "true"))
+	FVector GetLastSensedActorLocation() const
+	{
+		if (LastSensedActorLocation == FVector::ZeroVector)
+			return this->GetActorLocation();
+		
+		return LastSensedActorLocation;
+	}
 
 public:	
 	virtual void Tick(float DeltaTime) override;
